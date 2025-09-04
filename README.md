@@ -4,8 +4,7 @@
 
 
 
-
-This repository provides a **one-click installer** for configuring ALSA …
+This repository provides a **one-click installer** for configuring ALSA … 
 
 
 This repository provides a **one-click installer** for configuring ALSA on compatible Mac models such as **iMac and MacBook devices** equipped with the **Cirrus Logic CS8409 audio codec**.  
