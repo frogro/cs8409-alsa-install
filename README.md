@@ -1,7 +1,9 @@
 # ALSA Configuration for Macs with Cirrus Logic CS8409
 
 ![Tested on iMac 2019](https://img.shields.io/badge/Tested%20on-iMac%202019-blue?logo=apple)
+
 [![ShellCheck](https://github.com/frogro/cs8409-alsa-install/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/frogro/cs8409-alsa-install/actions/workflows/shellcheck.yml)
+
 
 
 This repository provides a **one-click installer** for configuring ALSA …
