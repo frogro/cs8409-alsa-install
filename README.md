@@ -5,7 +5,6 @@
 
 
 
-
 This repository provides a **one-click installer** for configuring ALSA …
 
 
