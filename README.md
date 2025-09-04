@@ -2,10 +2,6 @@
 ![Tested on iMac 2019](https://img.shields.io/badge/Tested%20on-iMac%202019-2b90ff?logo=apple&logoColor=white&style=flat-square)
 [![ShellCheck](https://img.shields.io/github/actions/workflow/status/frogro/cs8409-alsa-install/main.yml?branch=main&label=ShellCheck&logo=gnu-bash&logoColor=white&style=flat-square)](https://github.com/frogro/cs8409-alsa-install/actions/workflows/main.yml)
 
-
-This repository provides a **one-click installer** for configuring ALSA … 
-
-
 This repository provides a **one-click installer** for configuring ALSA on compatible Mac models such as **iMac and MacBook devices** equipped with the **Cirrus Logic CS8409 audio codec**.  
 ✅ Verified on **iMac 21.5-inch 4K Late 2019**. Other CS8409-based Macs may also be supported.
 
