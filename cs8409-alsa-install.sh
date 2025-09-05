@@ -101,7 +101,6 @@ main() {
   check_driver
   add_kernel_param
   write_blacklist
-  write_asound_conf
   msg "Done. Please reboot to apply all changes."
 }
 
