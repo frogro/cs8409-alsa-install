@@ -52,7 +52,6 @@ add_kernel_param() {
     if grep -q "$param" "$grub"; then
       msg "Kernel parameter already present in GRUB_CMDLINE_LINUX."
     else
-      # Insert the parameter safely into the existing quoted value
       sed -i -E "s|^(GRUB_CMDLINE_LINUX=\"[^\"]*)\"$|\1 ${param}\"|" "$grub"
       msg "Added kernel parameter to GRUB_CMDLINE_LINUX."
     fi
@@ -98,15 +97,11 @@ write_asound_conf() {
   local f="/etc/asound.conf"
   msg "Writing ALSA defaults to $f"
   cat > "$f" <<'EOF'
-### cs8409-alsa-install (managed)
-# Stable defaults: 44.1 kHz, 16-bit, route to card 0
+### cs8409-alsa-install (managed, auto)
+# Neutral defaults: use plug to auto-convert to what the HW accepts
 pcm.!default {
   type plug
-  slave.pcm "sysdefault:0"
-  slave {
-    rate 44100
-    format S16_LE
-  }
+  slave.pcm "hw:0,0"
 }
 ctl.!default {
   type hw
