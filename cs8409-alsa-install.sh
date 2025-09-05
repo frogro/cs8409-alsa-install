@@ -93,22 +93,7 @@ blacklist snd_soc_skl
 EOF
 }
 
-write_asound_conf() {
-  local f="/etc/asound.conf"
-  msg "Writing ALSA defaults to $f"
-  cat > "$f" <<'EOF'
-### cs8409-alsa-install (managed, auto)
-# Neutral defaults: use plug to auto-convert to what the HW accepts
-pcm.!default {
-  type plug
-  slave.pcm "hw:0,0"
-}
-ctl.!default {
-  type hw
-  card 0
-}
-EOF
-}
+
 
 main() {
   require_root
