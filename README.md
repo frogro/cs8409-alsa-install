@@ -51,7 +51,9 @@ sudo reboot
 
 ## Uninstall
 
-Uninstall the **PulseAudio profile** set up by the installer: removes ALSA & CS8409 configs, blacklist files, reverts the GRUB kernel parameter snd_intel_dspcfg.dsp_driver=1, deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).<br/>Optionally purges PulseAudio packages with --purge.
+Uninstall the **PulseAudio profile** set up by the installer: 
+- removes ALSA & CS8409 configs, blacklist files, reverts the GRUB kernel parameter snd_intel_dspcfg.dsp_driver=1, 
+- deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).<br/>- Optionally purges PulseAudio packages with --purge.
 
 ```bash
 sudo ./imac2019_audio_uninstall.sh
@@ -67,10 +69,6 @@ sudo reboot
 
 ## Notes
 
-- The script modifies system files:
-  - `/etc/default/grub`
-  - `/etc/modprobe.d/blacklist-sof.conf`
-  - `/etc/asound.conf`
 - Please review before use on production systems.
 - Experimental — feedback and pull requests are welcome.
 
