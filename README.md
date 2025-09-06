@@ -27,6 +27,7 @@ This repository provides a **one-click installer** for configuring **ALSA + Puls
 **Result:**  
 - Active profile: **ALSA + PulseAudio 16.1**  
 - `pactl info` → `Server Name: pulseaudio (16.1)`
+No custom config files are created.
 ---
 
 ## Usage
