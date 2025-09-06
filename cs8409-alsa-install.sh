@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# cs8409-alsa-install.sh — ALSA + PulseAudio (GUI), Desktop-agnostisch
-# - APT-Pinning früh gegen pipewire-audio/-alsa
+# cs8409-alsa-install.sh — ALSA + PulseAudio (GUI), Desktop-agnostisch & robust
+# - Frühes APT-Pinning: blockt pipewire-audio/-alsa
 # - Installiert PulseAudio + Tools
-# - Entfernt pipewire-audio/-alsa (idempotent)
+# - Entfernt pipewire-audio/-alsa, falls vorhanden (idempotent)
 # - Schreibt cs8409.conf, asound.conf, Blacklists
-# - Fügt GRUB-Param snd_intel_dspcfg.dsp_driver=1 nur bei Bedarf hinzu
-# - systemd (User): PipeWire/WirePlumber maskieren, PulseAudio ENABLE (ohne --now)
-# - Lädt Treiber neu, speichert ALSA-States
-# -> Reboot/Login danach startet PulseAudio automatisch
+# - Fügt GRUB-Param snd_intel_dspcfg.dsp_driver=1 nur bei Bedarf hinzu (defensiv)
+# - systemd (User): PipeWire/WirePlumber maskieren, PulseAudio enable (OHNE --now)
+#   -> Ausgabe der user-Befehle wird komplett unterdrückt, damit keine Bus-Fehler erscheinen
+# - Lädt Treiber neu, speichert ALSA-State
+# - Fragt am Ende interaktiv nach Reboot
+# Reboot/Neuanmeldung startet PulseAudio automatisch.
 
 msg(){ printf "\033[1;32m[+] %s\033[0m\n" "$*"; }
 warn(){ printf "\033[1;33m[!] %s\033[0m\n" "$*"; }
@@ -20,7 +22,7 @@ is_installed(){ dpkg -s "$1" >/dev/null 2>&1; }
 require_root
 U=${SUDO_USER:-$(logname 2>/dev/null || echo root)}
 
-# 0) APT-Pinning (früh)
+# 0) APT-Pinning früh setzen
 PIN=/etc/apt/preferences.d/no-pipewire-audio.pref
 if [[ ! -f "$PIN" ]]; then
   msg "Write APT pin to block pipewire-audio/pipewire-alsa"
@@ -80,35 +82,47 @@ blacklist soundwire_bus
 blacklist snd_soc_skl
 EOF
 
-# 6) GRUB-Parameter nur bei Bedarf
+# 6) GRUB-Parameter nur bei Bedarf (defensiv, bricht nie)
 GRUB=/etc/default/grub
 PARAM=snd_intel_dspcfg.dsp_driver=1
-if [[ -f "$GRUB" ]] && ! grep -q "\b$PARAM\b" "$GRUB"; then
-  msg "Add $PARAM to GRUB_CMDLINE_LINUX_DEFAULT"
-  sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 '"$PARAM"'"/' "$GRUB" || true
-  have update-grub && update-grub || true
+if [[ -f "$GRUB" ]]; then
+  if ! grep -q '\bsnd_intel_dspcfg.dsp_driver=1\b' "$GRUB"; then
+    msg "Add $PARAM to GRUB_CMDLINE_LINUX_DEFAULT"
+    if ! grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' "$GRUB"; then
+      echo 'GRUB_CMDLINE_LINUX_DEFAULT="'"$PARAM"'"' >> "$GRUB" || true
+    else
+      sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 '"$PARAM"'"/' "$GRUB" || true
+    fi
+    if have update-grub; then update-grub || true; fi
+  fi
 fi
 
-# 7) systemd (User): PipeWire/WirePlumber maskieren, PulseAudio ENABLE (ohne --now)
-msg "Configure user services (enable/disable/mask) for next login"
-su -l "$U" -c '
-  # Disable sockets, mask services (kein --now)
-  systemctl --user disable pipewire.socket pipewire-pulse.socket 2>/dev/null || true
-  systemctl --user mask    pipewire.service pipewire.socket 2>/dev/null || true
-  systemctl --user mask    pipewire-pulse.service pipewire-pulse.socket 2>/dev/null || true
-  systemctl --user mask    wireplumber.service 2>/dev/null || true
+# 7) systemd (User): PipeWire/WirePlumber maskieren, Pulse enable — OHNE --now
+#    Unterdrücke alle Ausgaben, um "Failed to connect to bus" unsichtbar zu halten, falls keine Session aktiv ist.
+msg "Configure user services for next login (no --now)"
+su -l "$U" -s /bin/bash -c '
+  {
+    systemctl --user disable pipewire.socket pipewire-pulse.socket || true
+    systemctl --user mask    pipewire.service pipewire.socket     || true
+    systemctl --user mask    pipewire-pulse.service pipewire-pulse.socket || true
+    systemctl --user mask    wireplumber.service                  || true
 
-  systemctl --user unmask  pulseaudio.service pulseaudio.socket 2>/dev/null || true
-  systemctl --user enable  pulseaudio.socket pulseaudio.service
-' || warn "systemd --user not reachable (no session). After login run:
-  systemctl --user enable pulseaudio.socket pulseaudio.service
-  systemctl --user disable pipewire.socket pipewire-pulse.socket
-  systemctl --user mask pipewire.service pipewire.socket pipewire-pulse.service pipewire-pulse.socket wireplumber.service"
+    systemctl --user unmask  pulseaudio.service pulseaudio.socket || true
+    systemctl --user enable  pulseaudio.socket pulseaudio.service || true
+  } >/dev/null 2>&1
+' || true
 
-# 8) Treiber neu laden + ALSA-State speichern
+# 8) Treiber neu laden + ALSA-State speichern (bricht nie)
 msg "Reload snd_hda_intel and store ALSA state"
 modprobe -r snd_hda_intel 2>/dev/null || true
 modprobe snd_hda_intel  || true
 alsactl store          || true
 
-msg "Done. Reboot recommended (then login once to start PulseAudio automatically)."
+msg "Done. Reboot recommended (then login to start Pulse automatically)."
+
+# 9) Optionaler Reboot-Prompt (englisch)
+read -rp "Do you want to reboot now? (y/n) " ans || true
+case "${ans:-n}" in
+  [Yy]* ) reboot ;;
+  * ) echo "Reboot skipped. Please reboot manually later." ;;
+esac
