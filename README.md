@@ -14,15 +14,20 @@ This repository provides a **one-click installer** for configuring **ALSA + Puls
 
 ## What the installer does
 
-1. Installs required dependencies (ALSA utilities, GRUB tooling).
-2. Adds the kernel boot parameter:
-   ```
-   snd_intel_dspcfg.dsp_driver=1
-   ```
-   to `/etc/default/grub` and runs `update-grub` (or `grub-mkconfig`).
-3. Blacklists SOF/SoundWire modules to avoid driver conflicts.
-4. Creates `/etc/asound.conf` with stable ALSA defaults: **44.1 kHz / 16-bit** output.
+- Adds APT pin to block `pipewire-audio`, `pipewire-alsa`, `pipewire-pulse`
+- Installs **PulseAudio + tools** (`pulseaudio`, `pulseaudio-utils`, `pavucontrol`, `alsa-utils`, `libasound2-plugins`)
+- Removes any PipeWire audio components (idempotent)
+- Writes **driver options** (`/etc/modprobe.d/cs8409.conf`) and **ALSA defaults** (`/etc/asound.conf`)
+- Blacklists conflicting modules (`snd_hda_codec_generic`, `SOF/SoundWire`)
+- Adds GRUB parameter `snd_intel_dspcfg.dsp_driver=1` if missing
+- Masks **PipeWire/WirePlumber** in user services and enables PulseAudio (socket-activated)
+- Reloads `snd_hda_intel` and stores ALSA state
+- Ends with reboot prompt
 
+**Result:**  
+- Active profile: **ALSA + PulseAudio 16.1**  
+- `pactl info` → `Server Name: pulseaudio (16.1)`
+- 
 ---
 
 ## Usage
