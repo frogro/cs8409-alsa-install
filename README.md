@@ -32,7 +32,7 @@ This repository provides a **one-click installer** for configuring ALSA on compa
 ```bash
 git clone https://github.com/frogro/cs8409-alsa-install.git
 cd cs8409-alsa-install
-chmod +x cs8409-alsa-install.sh cs8409-alsa-uninstall.sh
+sudo chmod +x cs8409-alsa-install.sh cs8409-alsa-uninstall.sh
 sudo ./cs8409-alsa-install.sh
 sudo reboot
 ```
