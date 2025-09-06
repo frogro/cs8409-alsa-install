@@ -51,7 +51,7 @@ sudo reboot
 
 ## Uninstall
 
-Uninstall the PulseAudio profile set up by the installer: 
+Script uninstalls the PulseAudio profile set up by the installer: 
 - removes ALSA & CS8409 configs, blacklist files, reverts the GRUB kernel parameter `snd_intel_dspcfg.dsp_driver=1`, 
 - deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).
 
