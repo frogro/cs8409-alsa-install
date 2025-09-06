@@ -60,12 +60,6 @@ sudo ./imac2019_audio_uninstall.sh
 sudo reboot
 ```
 
-## Requirements
-
-- Linux with GRUB bootloader (tested on Debian 12/13)  
-- Kernel module installed via [`cs8409-dkms-wrapper`](https://github.com/frogro/cs8409-dkms-wrapper)  
-- ALSA utilities (`alsa-utils`)
-
 ## Notes
 
 - Please review before use on production systems.
