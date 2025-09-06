@@ -51,11 +51,11 @@ sudo reboot
 
 ## Uninstall
 
-Uninstalls the PulseAudio profile set up by the installer: removes ALSA & CS8409 configs, blacklist files, reverts the GRUB kernel parameter snd_intel_dspcfg.dsp_driver=1, deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).<br/>Optionally purges PulseAudio packages with --purge.
+Uninstall the **PulseAudio profile** set up by the installer: removes ALSA & CS8409 configs, blacklist files, reverts the GRUB kernel parameter snd_intel_dspcfg.dsp_driver=1, deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).<br/>Optionally purges PulseAudio packages with --purge.
 
 ```bash
 sudo ./imac2019_audio_uninstall.sh
-sudo ./imac2019_audio_uninstall.sh --purge #(Optional: --purge removes pulseaudio*, pavucontrol, libasound2-plugins)
+sudo ./imac2019_audio_uninstall.sh --purge #(--purge removes pulseaudio, pavucontrol, libasound2-plugins)
 sudo reboot
 ```
 
