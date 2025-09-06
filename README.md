@@ -1,6 +1,6 @@
 # Linux ALSA + PulseAudio Configuration for Macs with Cirrus Logic CS8409
 ![Tested on iMac 2019](https://img.shields.io/badge/Tested%20on-iMac%202019-2b90ff?logo=apple&logoColor=white&style=flat-square)
-[![ShellCheck](https://img.shields.io/github/actions/workflow/status/frogro/cs8409-alsa-install/main.yml?branch=main&label=ShellCheck&logo=gnu-bash&logoColor=white&style=flat-square)](https://github.com/frogro/cs8409-alsa-install/actions/workflows/main.yml)
+[![ShellCheck](https://img.shields.io/github/actions/workflow/status/frogro/cs8409-alsa-install/main.yml?branch=main&label=ShellCheck<br/>&logo=gnu-bash&logoColor=white&style=flat-square)](https://github.com/frogro/cs8409-alsa-install/actions/workflows/main.yml)
 
 
 This repository provides a **one-click installer** for configuring **ALSA + PulseAudio** on compatible Mac models such as **iMac and MacBook devices** equipped with the **Cirrus Logic CS8409 audio codec**.  
@@ -27,7 +27,6 @@ This repository provides a **one-click installer** for configuring **ALSA + Puls
 **Result:**  
 - Active profile: **ALSA + PulseAudio 16.1**  
 - `pactl info` → `Server Name: pulseaudio (16.1)`
-No custom config files are created.
 ---
 
 ## Usage
