@@ -1,92 +1,72 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# cs8409-alsa-install.sh — PURE ALSA (ohne PulseAudio), mit Verifikation
-# Ziel: Debian/Ubuntu/Mint (APT-basiert). Root benötigt.
-# Was das Skript macht:
-#  - Installiert alsa-utils (alsamixer, speaker-test, alsactl …)
-#  - Erzwingt Kartenreihenfolge & iMac-Quirk (CS8409 = card0, HDMI = card1; model=imac)
-#  - Setzt systemweite ALSA-Defaults (hw:0,0)
-#  - Blacklistet snd_hda_codec_generic sowie optional SOF/SoundWire-Module
-#  - Setzt Kernel-Parameter snd_intel_dspcfg.dsp_driver=1 in GRUB (+ update-grub)
-#  - Aktualisiert initramfs
-#  - Deaktiviert & MASKIERT PipeWire, WirePlumber **und PulseAudio** (USER-Services)
-#  - Lädt HDA-Treiber neu
-#  - Speichert ALSA-States (alsactl store)
-#  - Gibt am Ende Verifikations-Hinweise aus (inkl. pactl-Check, falls vorhanden)
+# cs8409-alsa-install.sh — ALSA + PulseAudio (GUI), Desktop-agnostisch
+# - APT-Pinning früh gegen pipewire-audio/-alsa
+# - Installiert PulseAudio + Tools
+# - Entfernt pipewire-audio/-alsa (idempotent)
+# - Schreibt cs8409.conf, asound.conf, Blacklists
+# - Fügt GRUB-Param snd_intel_dspcfg.dsp_driver=1 nur bei Bedarf hinzu
+# - systemd (User): PipeWire/WirePlumber maskieren, PulseAudio ENABLE (ohne --now)
+# - Lädt Treiber neu, speichert ALSA-States
+# -> Reboot/Login danach startet PulseAudio automatisch
 
-msg()  { printf "\033[1;32m[+] %s\033[0m\n" "$*"; }
-warn() { printf "\033[1;33m[!] %s\033[0m\n" "$*"; }
-err()  { printf "\033[1;31m[✗] %s\033[0m\n" "$*"; }
+msg(){ printf "\033[1;32m[+] %s\033[0m\n" "$*"; }
+warn(){ printf "\033[1;33m[!] %s\033[0m\n" "$*"; }
+require_root(){ [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "run as root"; exit 1; }; }
+have(){ command -v "$1" >/dev/null 2>&1; }
+is_installed(){ dpkg -s "$1" >/dev/null 2>&1; }
 
-require_root(){
-  if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
-    err "Bitte mit Root-Rechten (sudo) ausführen."; exit 1
-  fi
-}
-
-have_cmd(){ command -v "$1" >/dev/null 2>&1; }
-
-user_name(){
-  # Bestmögliche Ermittlung des Ziel-Users für --user systemd
-  local u
-  u=${SUDO_USER:-}
-  if [[ -z "$u" || "$u" == "root" ]]; then
-    u=$(logname 2>/dev/null || true)
-  fi
-  [[ -n "$u" ]] && printf '%s' "$u" || printf 'root'
-}
-
-# --- Start ---
 require_root
-U=$(user_name)
-msg "Ziel-User für --user systemd: $U"
+U=${SUDO_USER:-$(logname 2>/dev/null || echo root)}
 
-# 1) Pakete
-msg "Installiere alsa-utils …"
-if have_cmd apt; then
-  DEBIAN_FRONTEND=noninteractive apt update -y
-  DEBIAN_FRONTEND=noninteractive apt install -y alsa-utils
-else
-  warn "APT nicht gefunden. Bitte alsa-utils manuell installieren."
+# 0) APT-Pinning (früh)
+PIN=/etc/apt/preferences.d/no-pipewire-audio.pref
+if [[ ! -f "$PIN" ]]; then
+  msg "Write APT pin to block pipewire-audio/pipewire-alsa"
+  tee "$PIN" >/dev/null <<'EOF'
+Package: pipewire-audio
+Pin: release *
+Pin-Priority: -1
+
+Package: pipewire-alsa
+Pin: release *
+Pin-Priority: -1
+EOF
 fi
 
-# 2) Kartenreihenfolge & Modell setzen
-msg "Schreibe /etc/modprobe.d/cs8409.conf …"
-cat > /etc/modprobe.d/cs8409.conf <<'EOF'
-# cs8409-alsa-install (managed)
-# Erzwinge Kartenreihenfolge und iMac-Quirk
+apt update -y
+
+# 1) Pulse + Tools
+msg "Install PulseAudio + tools"
+apt install -y pulseaudio pulseaudio-utils pavucontrol alsa-utils
+
+# 2) PipeWire-Audio-Konflikte entfernen (idempotent)
+if is_installed pipewire-audio || is_installed pipewire-alsa; then
+  msg "Remove conflicting: pipewire-audio pipewire-alsa"
+  apt remove -y pipewire-audio pipewire-alsa || true
+fi
+
+# 3) CS8409-Optionen
+msg "Write /etc/modprobe.d/cs8409.conf"
+tee /etc/modprobe.d/cs8409.conf >/dev/null <<'EOF'
 options snd_hda_intel index=0,1
 options snd_hda_intel model=imac
 EOF
 
-# 3) ALSA-Defaults systemweit
-msg "Schreibe /etc/asound.conf (Defaults auf hw:0,0) …"
-cat > /etc/asound.conf <<'EOF'
-### cs8409-alsa-install (managed)
-# Neutrale Defaults: plug konvertiert bei Bedarf auf das, was das HW-PCM akzeptiert
-pcm.!default {
-  type plug
-  slave.pcm "hw:0,0"
-}
-ctl.!default {
-  type hw
-  card 0
-}
+# 4) ALSA-Defaults
+msg "Write /etc/asound.conf"
+tee /etc/asound.conf >/dev/null <<'EOF'
+pcm.!default { type plug; slave.pcm "hw:0,0"; }
+ctl.!default  { type hw;  card 0; }
 EOF
 
-# 4) Generic-Codec blacklist
-msg "Blackliste snd_hda_codec_generic …"
-cat > /etc/modprobe.d/blacklist-generic.conf <<'EOF'
-# cs8409-alsa-install (managed)
-blacklist snd_hda_codec_generic
-EOF
+# 5) Blacklists
+msg "Blacklist snd_hda_codec_generic"
+echo "blacklist snd_hda_codec_generic" > /etc/modprobe.d/blacklist-generic.conf
 
-# 5) Optional: SOF/SoundWire-Stacks blockieren (manche Macs)
-msg "Schreibe /etc/modprobe.d/blacklist-sof.conf (optional) …"
-cat > /etc/modprobe.d/blacklist-sof.conf <<'EOF'
-# cs8409-alsa-install (managed)
-# Verhindere Konflikte zwischen SOF/SoundWire und HDA/CS8409
+msg "Blacklist SOF/SoundWire (recommended on some Macs)"
+tee /etc/modprobe.d/blacklist-sof.conf >/dev/null <<'EOF'
 blacklist snd_sof_pci_intel_cnl
 blacklist snd_sof_pci_intel_tgl
 blacklist snd_sof_pci_intel_icl
@@ -100,92 +80,35 @@ blacklist soundwire_bus
 blacklist snd_soc_skl
 EOF
 
-# 6) GRUB-Parameter setzen (HDA statt SOF)
-GRUB_CFG=/etc/default/grub
+# 6) GRUB-Parameter nur bei Bedarf
+GRUB=/etc/default/grub
 PARAM=snd_intel_dspcfg.dsp_driver=1
-if [[ -f "$GRUB_CFG" ]]; then
-  if grep -q "$PARAM" "$GRUB_CFG"; then
-    msg "GRUB enthält bereits $PARAM"
-  else
-    msg "Füge $PARAM zu GRUB_CMDLINE_LINUX_DEFAULT hinzu …"
-    sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=\)"/\1"'"$PARAM "'/' "$GRUB_CFG" || true
-  fi
-  if have_cmd update-grub; then
-    msg "Führe update-grub aus …"
-    update-grub
-  else
-    warn "update-grub nicht gefunden; Bootloader manuell aktualisieren."
-  fi
-else
-  warn "$GRUB_CFG nicht gefunden; GRUB-Änderung übersprungen."
+if [[ -f "$GRUB" ]] && ! grep -q "\b$PARAM\b" "$GRUB"; then
+  msg "Add $PARAM to GRUB_CMDLINE_LINUX_DEFAULT"
+  sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 '"$PARAM"'"/' "$GRUB" || true
+  have update-grub && update-grub || true
 fi
 
-# 7) initramfs aktualisieren
-if have_cmd update-initramfs; then
-  msg "Aktualisiere initramfs …"
-  update-initramfs -u
-else
-  warn "update-initramfs nicht gefunden; überspringe."
-fi
-
-# 8) PipeWire, WirePlumber **und PulseAudio** für den User stoppen/disable/mask
-msg "Deaktiviere & MASKe PipeWire, WirePlumber und PulseAudio (User-Services) …"
+# 7) systemd (User): PipeWire/WirePlumber maskieren, PulseAudio ENABLE (ohne --now)
+msg "Configure user services (enable/disable/mask) for next login"
 su -l "$U" -c '
-  systemctl --user stop pipewire pipewire-pulse wireplumber pulseaudio 2>/dev/null || true
-  systemctl --user disable --now pipewire.socket pipewire-pulse.socket pulseaudio.socket 2>/dev/null || true
-  systemctl --user mask --now pipewire.service pipewire.socket 2>/dev/null || true
-  systemctl --user mask --now pipewire-pulse.service pipewire-pulse.socket 2>/dev/null || true
-  systemctl --user mask --now wireplumber.service 2>/dev/null || true
-  systemctl --user mask --now pulseaudio.service pulseaudio.socket 2>/dev/null || true
-' || warn "Konnte nicht mit user systemd sprechen (kein User-Login?). Wirksam nach nächster Anmeldung."
+  # Disable sockets, mask services (kein --now)
+  systemctl --user disable pipewire.socket pipewire-pulse.socket 2>/dev/null || true
+  systemctl --user mask    pipewire.service pipewire.socket 2>/dev/null || true
+  systemctl --user mask    pipewire-pulse.service pipewire-pulse.socket 2>/dev/null || true
+  systemctl --user mask    wireplumber.service 2>/dev/null || true
 
-# 9) HDA-Treiber neu laden (Best-Effort)
-msg "Lade snd_hda_intel neu …"
+  systemctl --user unmask  pulseaudio.service pulseaudio.socket 2>/dev/null || true
+  systemctl --user enable  pulseaudio.socket pulseaudio.service
+' || warn "systemd --user not reachable (no session). After login run:
+  systemctl --user enable pulseaudio.socket pulseaudio.service
+  systemctl --user disable pipewire.socket pipewire-pulse.socket
+  systemctl --user mask pipewire.service pipewire.socket pipewire-pulse.service pipewire-pulse.socket wireplumber.service"
+
+# 8) Treiber neu laden + ALSA-State speichern
+msg "Reload snd_hda_intel and store ALSA state"
 modprobe -r snd_hda_intel 2>/dev/null || true
-sleep 1
-modprobe snd_hda_intel || warn "Konnte snd_hda_intel nicht laden; dmesg prüfen."
+modprobe snd_hda_intel  || true
+alsactl store          || true
 
-# 10) ALSA-States speichern
-if have_cmd alsactl; then
-  msg "Speichere ALSA-State (alsactl store) …"
-  alsactl store || warn "alsactl store fehlgeschlagen; ggf. nach Mixer-Anpassung erneut ausführen."
-else
-  warn "alsactl nicht gefunden (paket alsa-utils fehlt?)."
-fi
-
-# 11) Verifikation & Hinweise
-cat <<'EOT'
-
-=== Verifikation (PURE ALSA) ===
-1) Karten & Geräte (ALSA):
-   aplay -l
-   arecord -l
-   # Erwartung: Karte 0 = HDA Intel PCH (CS8409), Karte 1 = HDMI
-
-2) Default-Device testen (ein kurzer Ton):
-   speaker-test -D default -c 2 -t sine -f 440 -l 1
-
-3) Prüfen, dass **kein** PipeWire/PulseAudio aktiv ist:
-   # Prozesse
-   ps -C pipewire -o pid,cmd
-   ps -C pulseaudio -o pid,cmd
-   # Systemd-Status (User)
-   systemctl --user is-active pipewire.service pipewire-pulse.service wireplumber.service pulseaudio.service || true
-   systemctl --user is-enabled pipewire.socket pipewire-pulse.socket pulseaudio.socket || true
-
-4) Optionaler Check mit pactl (falls installiert):
-   pactl info | grep -i "Server Name" || echo "OK: Kein PulseAudio-Server aktiv oder pactl nicht vorhanden."
-   # Wenn dennoch etwas wie "PulseAudio (on PipeWire …)" erscheint, ist der PipeWire-Stack noch aktiv.
-
-5) Mixer prüfen/setzen (z. B. Kanäle entmuten, Lautstärke anheben):
-   alsamixer
-   # Danach den Zustand persistent speichern:
-   sudo alsactl store
-
-— Hinweis —
-- Ein Reboot ist empfehlenswert, damit GRUB-Parameter + initramfs-Änderungen vollständig greifen.
-- Desktop-Einstellungen (GNOME/KDE) zeigen im PURE‑ALSA‑Modus keine Geräte an. Verwende alsamixer/qasmixer.
-- Für Studio/Mehrfach‑App‑Audio erwäge JACK:  jackd -d alsa -d hw:0 -r 48000 -p 128 -n 3
-EOT
-
-msg "Fertig. Reboot empfohlen."
+msg "Done. Reboot recommended (then login once to start PulseAudio automatically)."
