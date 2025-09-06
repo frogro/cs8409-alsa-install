@@ -5,7 +5,7 @@
 
 This repository provides a **one-click installer** for configuring **ALSA + PulseAudio** on compatible Mac models such as **iMac and MacBook devices** equipped with the **Cirrus Logic CS8409 audio codec**.  
 
-✅ Verified on **iMac 21.5-inch 4K Late 2019**. Other CS8409-based Macs may also be supported.\✅ Verified on Debian 12 (Bookworm) and Debian 13 (Trixie). Other Linux distributions or versions — especially Debian-based ones such as Ubuntu or Linux Mint — may also work, but have not been tested.
+✅ Verified on **iMac 21.5-inch 4K Late 2019**. Other CS8409-based Macs may also be supported.<br/>✅ Verified on Debian 12 (Bookworm) and Debian 13 (Trixie). Other Linux distributions or versions — especially Debian-based ones such as Ubuntu or Linux Mint — may also work, but have not been tested.
 
 > **Important:** This repository does **not** build or install the kernel driver itself.  
 > Install the driver first via: [frogro/cs8409-dkms-wrapper](https://github.com/frogro/cs8409-dkms-wrapper).
