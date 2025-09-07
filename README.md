@@ -48,7 +48,17 @@ chmod +x cs8409-alsa-install.sh cs8409-alsa-uninstall.sh
 sudo ./cs8409-alsa-install.sh
 sudo reboot
 ```
-
+## Verify after login
+```bash
+systemctl --user is-active pulseaudio.socket pulseaudio.service
+# expected: 
+systemctl --user is-active pipewire.socket pipewire-pulse.socket wireplumber.service
+# expected: 
+pactl info | egrep 'Name des Servers|Standard-Ziel'
+# expected: "Server Name: pulseaudio"
+pactl list short sinks
+# expected: 
+```
 ## Uninstall
 
 Script uninstalls the PulseAudio profile set up by the installer: 
