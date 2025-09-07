@@ -33,7 +33,7 @@ This repository provides a **one-click installer** for configuring **ALSA + Puls
 ## Option A: Clone the repository (recommended)
 
 ```bash
-git clone https://github.com/frogro/cs8409-alsa-install.git
+git clone https://github.com/frogro/imac-cs8409-alsa-install.git
 cd cs8409-alsa-install
 sudo chmod +x cs8409-alsa-install.sh cs8409-alsa-uninstall.sh
 sudo ./cs8409-alsa-install.sh
@@ -42,8 +42,8 @@ sudo reboot
 ## Option B: Download only the scripts (quick method)
 
 ```bash
-wget https://raw.githubusercontent.com/frogro/cs8409-alsa-install/main/cs8409-alsa-install.sh
-wget https://raw.githubusercontent.com/frogro/cs8409-alsa-install/main/cs8409-alsa-uninstall.sh
+wget https://raw.githubusercontent.com/frogro/imac-cs8409-alsa-install/main/cs8409-alsa-install.sh
+wget https://raw.githubusercontent.com/frogro/imac-cs8409-alsa-install/main/cs8409-alsa-uninstall.sh
 chmod +x cs8409-alsa-install.sh cs8409-alsa-uninstall.sh
 sudo ./cs8409-alsa-install.sh
 sudo reboot
