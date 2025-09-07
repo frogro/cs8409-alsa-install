@@ -50,14 +50,24 @@ sudo reboot
 ```
 ## Verify after login
 ```bash
+# Check that PulseAudio is active
 systemctl --user is-active pulseaudio.socket pulseaudio.service
-# expected: 
+# expected: "active" "active"
+
+# Check that PipeWire/WirePlumber are not running
 systemctl --user is-active pipewire.socket pipewire-pulse.socket wireplumber.service
-# expected: 
+# expected: "inactive" or "failed" (they should not run)
+
+# Check the PulseAudio server info
 pactl info | egrep 'Name des Servers|Standard-Ziel'
 # expected: "Server Name: pulseaudio"
+# expected: "Default Sink: alsa_output.pci-0000_00_1f.3.analog-stereo" (or similar)
+
+# List available sinks
 pactl list short sinks
-# expected: 
+# expected: at least one real hardware sink 
+# (e.g. "alsa_output.pci-0000_00_1f.3.analog-stereo"),
+# not only "auto_null"
 ```
 ## Uninstall
 
