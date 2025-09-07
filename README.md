@@ -76,7 +76,7 @@ Script uninstalls the PulseAudio profile set up by the installer:
 - deletes the APT pin that blocked PipeWire, and resets user services (unmasks PipeWire units, disables/stops PulseAudio).
 
 ```bash
-sudo ./imac2019_audio_uninstall.sh
+sudo ./imac2019-alsa-uninstall.sh
 sudo reboot
 ```
 
