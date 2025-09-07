@@ -171,5 +171,27 @@ pactl_user "$U" sh -lc 'echo "--- pactl info ---"; pactl info | egrep "Name des 
 pactl_user "$U" sh -lc 'echo "--- sinks ---"; pactl list short sinks || true'
 pactl_user "$U" speaker-test -D pulse -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 || true &
 
+# --- Clean-up: ensure PulseAudio is the only active stack ---
+msg "Clean-up: disable PipeWire/WirePlumber, enable PulseAudio"
+
+# Stop + disable PipeWire & WirePlumber
+systemctl --user disable --now \
+  pipewire.service pipewire.socket \
+  pipewire-pulse.service pipewire-pulse.socket \
+  wireplumber.service 2>/dev/null || true
+
+# Remove user mask symlinks to /dev/null (if they exist from experiments)
+find "/home/$U/.config/systemd/user" -maxdepth 1 -xtype l -lname /dev/null -print -delete || true
+
+# Enable + start PulseAudio (socket-activated)
+systemctl --user unmask pulseaudio.service pulseaudio.socket 2>/dev/null || true
+systemctl --user enable pulseaudio.socket pulseaudio.service || true
+systemctl --user start pulseaudio.socket || true
+sleep 1
+
+# Quick verify
+pactl info | egrep 'Name des Servers|Standard-Ziel' || true
+pactl list short sinks || true
+
 msg "All done. If GRUB was changed, a reboot is recommended."
 exit 0
